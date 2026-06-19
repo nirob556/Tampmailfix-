@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-⚡ SPEED X TempMail Bot
-Runs Telegram bot + web status server simultaneously.
+SPEED X TempMail Bot — Main Runner
+Bot runs first, then Flask starts in a daemon thread.
 """
+import threading, logging, asyncio, os
 
-import threading, logging, os
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s  [%(levelname)s]  %(message)s")
 
@@ -22,15 +22,22 @@ def run_web():
     from web import app
     port = int(os.environ.get("PORT", 8080))
     print(f"  🌐  Web server → http://0.0.0.0:{port}")
-    app.run(host="0.0.0.0", port=port, use_reloader=False)
-
-def run_bot():
-    from bot import main
-    print("  🤖  Telegram bot starting…")
-    main()
+    # Create a new event loop for this thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    app.run(host="0.0.0.0", port=port, use_reloader=False, threaded=True)
 
 if __name__ == "__main__":
     print(BANNER)
+
+    # Start web in background thread FIRST
     t = threading.Thread(target=run_web, daemon=True)
     t.start()
-    run_bot()
+
+    # Bot runs in main thread with its own event loop
+    print("  🤖  Telegram bot starting…")
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    from bot import main
+    main()
