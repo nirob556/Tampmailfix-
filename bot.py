@@ -193,8 +193,7 @@ async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 "❌  *Failed. Try again.*", parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([[
                     InlineKeyboardButton("🔄  Retry", callback_data="new_email")
-                ]])
-            )
+                ]]))
         return
 
     if data == "show_email":
@@ -213,9 +212,9 @@ async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             "━━━━━━━━━━━━━━━━━━━━━━━━━━\n_Tap to copy_",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("📬  Inbox",   callback_data="inbox"),
-                 InlineKeyboardButton("🔄  New",     callback_data="new_email")],
-                [InlineKeyboardButton("🏠  Home",    callback_data="home")],
+                [InlineKeyboardButton("📬  Inbox",  callback_data="inbox"),
+                 InlineKeyboardButton("🔄  New",    callback_data="new_email")],
+                [InlineKeyboardButton("🏠  Home",   callback_data="home")],
             ])
         ); return
 
@@ -274,7 +273,8 @@ async def on_button(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"{body or '_No content_'}"
             )
-            if codes: text += "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔢  *Codes / OTPs detected:*"
+            if codes:
+                text += "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔢  *Codes / OTPs detected:*"
             buttons = [[InlineKeyboardButton(f"📋  Copy: {c}", callback_data=f"copy_{c}")] for c in codes[:6]]
             buttons.append([InlineKeyboardButton("◀️  Inbox", callback_data="inbox"),
                              InlineKeyboardButton("🏠  Home",  callback_data="home")])
@@ -342,15 +342,22 @@ async def expiry_watcher(bot, user_id, email):
         except Exception: pass
 
 # ══════════════════════════════════════════════════════
-# MAIN
+# MAIN — asyncio.run() instead of app.run_polling()
 # ══════════════════════════════════════════════════════
 
-def main():
+async def async_main():
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CallbackQueryHandler(on_button))
-    logger.info("⚡ SPEED X TempMail Bot running — PTB 21.x / Python 3.14")
-    app.run_polling(drop_pending_updates=True)
+    logger.info("⚡ SPEED X TempMail Bot running")
+    async with app:
+        await app.start()
+        await app.updater.start_polling(drop_pending_updates=True)
+        # Keep running forever
+        await asyncio.Event().wait()
+
+def main():
+    asyncio.run(async_main())
 
 if __name__ == "__main__":
     main()
